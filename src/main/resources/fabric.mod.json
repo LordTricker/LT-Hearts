@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 1,
+	"id": "modid",
+	"version": "${version}",
+	"name": "LT-ModTemplate",
+	"description": "Template for creating fabric mods",
+	"authors": [
+		"LordTricker"
+	],
+	"contact": {
+		"homepage": "https://blazecode.pl/",
+		"sources": "https://github.com/LordTricker"
+	},
+	"license": "MIT",
+	"icon": "assets/modid/icon.png",
+
+	"environment": "*",
+	"entrypoints": {
+        "main": [
+                "pl.lordtricker.modid.ModTemplate"
+        ],
+        "client": [
+                "pl.lordtricker.modid.client.ModTemplateClient"
+        ]
+},
+	"mixins": [
+		{
+			"config": "modid.client.mixins.json",
+			"environment": "client"
+		}
+	],
+
+	"depends": {
+		"fabricloader": ">=0.15.11",
+		"minecraft": ">=1.21 <=1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
