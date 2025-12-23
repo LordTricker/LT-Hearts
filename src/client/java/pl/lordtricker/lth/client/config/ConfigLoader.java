@@ -13,7 +13,7 @@ public class ConfigLoader {
 
     static {
         Path configDir = FabricLoader.getInstance().getConfigDir();
-        MOD_CONFIG_DIR = configDir.resolve("LT-Mods").resolve("LT-ModTemplate");
+        MOD_CONFIG_DIR = configDir.resolve("LT-Mods").resolve("LT-Hearts");
         try {
             if (!Files.exists(MOD_CONFIG_DIR)) {
                 Files.createDirectories(MOD_CONFIG_DIR);
