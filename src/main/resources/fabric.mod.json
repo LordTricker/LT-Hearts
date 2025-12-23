@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"id": "modid",
+	"id": "lth",
 	"version": "${version}",
 	"name": "LT-ModTemplate",
 	"description": "Template for creating fabric mods",
@@ -12,20 +12,20 @@
 		"sources": "https://github.com/LordTricker"
 	},
 	"license": "MIT",
-	"icon": "assets/modid/icon.png",
+	"icon": "assets/lth/icon.png",
 
 	"environment": "*",
 	"entrypoints": {
         "main": [
-                "pl.lordtricker.modid.ModTemplate"
+                "pl.lordtricker.lth.ModTemplate"
         ],
         "client": [
-                "pl.lordtricker.modid.client.ModTemplateClient"
+          "pl.lordtricker.lth.client.LTHeartsClient"
         ]
 },
 	"mixins": [
 		{
-			"config": "modid.client.mixins.json",
+			"config": "lth.client.mixins.json",
 			"environment": "client"
 		}
 	],

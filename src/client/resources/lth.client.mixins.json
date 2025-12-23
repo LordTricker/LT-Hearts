@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "pl.lordtricker.lth.client.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "mixins": [
+        "ClientPlayerInteractionManagerMixin",
+        "MultiplayerScreenMixin",
+        "ServerListAccessor",
+        "ServerListMixin"
+    ],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
