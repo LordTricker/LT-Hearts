@@ -40,9 +40,9 @@ public final class HeartsRenderLogic {
         return alpha;
     }
 
-    public static float computeDamageLineOffset(int index, int fontHeight, int padding, int ageTicks, float pixelsPerTick) {
+    public static float computeDamageLineOffset(int index, int fontHeight, int padding, int ageTicks, float pixelsPerTick, float maxRisePixels) {
         float baseOffset = 0f;
-        float floatUp = -ageTicks * pixelsPerTick;
+        float floatUp = -Math.min(ageTicks * pixelsPerTick, maxRisePixels);
         return baseOffset - (index * (fontHeight + 2)) + floatUp;
     }
 }

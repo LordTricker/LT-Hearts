@@ -5,6 +5,7 @@
     "mixins": [
         "ClientPlayerInteractionManagerMixin",
         "MultiplayerScreenMixin",
+        "PlayerEntityRendererMixin",
         "ServerListAccessor",
         "ServerListMixin"
     ],
