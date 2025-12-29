@@ -27,16 +27,17 @@ public class HeartsDisplayLayout {
             return new HeartsDisplayLayout(Collections.emptyList());
         }
 
+        if (maxHearts > OVERFLOW_HEARTS) {
+            return new HeartsDisplayLayout(
+                    Collections.singletonList(buildCollapsedOverflowRow(clampedHealth, maxHearts))
+            );
+        }
+
         int rowsCount = Math.min(MAX_ROWS, (int) Math.ceil(maxHearts / (float) HEARTS_PER_ROW));
-        boolean overflow = maxHearts > OVERFLOW_HEARTS;
         List<List<HeartSlot>> rows = new ArrayList<>(rowsCount);
 
         for (int rowIndex = 0; rowIndex < rowsCount; rowIndex++) {
-            if (overflow && rowIndex == MAX_ROWS - 1) {
-                rows.add(buildOverflowRow(clampedHealth, maxHearts));
-            } else {
-                rows.add(buildStandardRow(clampedHealth, maxHearts, rowIndex));
-            }
+            rows.add(buildStandardRow(clampedHealth, maxHearts, rowIndex));
         }
 
         return new HeartsDisplayLayout(rows);
@@ -63,6 +64,19 @@ public class HeartsDisplayLayout {
         }
         row.add(HeartSlot.ellipsis());
         int extraHearts = Math.max(1, maxHearts - OVERFLOW_VISIBLE_HEARTS);
+        row.add(HeartSlot.bonus(extraHearts));
+        return row;
+    }
+
+    private static List<HeartSlot> buildCollapsedOverflowRow(float health, int maxHearts) {
+        List<HeartSlot> row = new ArrayList<>(HEARTS_PER_ROW);
+        int visibleHearts = HEARTS_PER_ROW - 2;
+        for (int i = 0; i < visibleHearts; i++) {
+            int heartIndex = 1 + i;
+            row.add(heartSlotForHealth(health, heartIndex));
+        }
+        row.add(HeartSlot.ellipsis());
+        int extraHearts = Math.max(1, maxHearts - visibleHearts);
         row.add(HeartSlot.bonus(extraHearts));
         return row;
     }

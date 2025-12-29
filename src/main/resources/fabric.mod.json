@@ -2,8 +2,8 @@
 	"schemaVersion": 1,
 	"id": "lth",
 	"version": "${version}",
-	"name": "LT-ModTemplate",
-	"description": "Template for creating fabric mods",
+	"name": "LT-Hearts",
+	"description": "LT-Hearts adds clear heart bars above players heads and optional damage animations, allowing you to quickly assess the state of a PvP fight.",
 	"authors": [
 		"LordTricker"
 	],

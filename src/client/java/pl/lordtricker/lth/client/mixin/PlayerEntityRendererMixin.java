@@ -151,24 +151,72 @@ public abstract class PlayerEntityRendererMixin
             if (row.isEmpty()) {
                 continue;
             }
+            boolean overflowRow = false;
+            for (HeartSlot slot : row) {
+                HeartSlotType type = slot.getType();
+                if (type == HeartSlotType.ELLIPSIS || type == HeartSlotType.BONUS) {
+                    overflowRow = true;
+                    break;
+                }
+            }
+            int heartSpacing = HEART_SIZE;
             int rowWidth = row.size() * HEART_SIZE;
+            int bonusTextWidth = 0;
+            if (overflowRow) {
+                for (HeartSlot slot : row) {
+                    if (slot.getType() == HeartSlotType.BONUS) {
+                        String text = "+" + slot.getBonusHearts();
+                        bonusTextWidth = tr.getWidth(text);
+                        break;
+                    }
+                }
+            }
+            if (overflowRow) {
+                int overlap = 2;
+                heartSpacing = HEART_SIZE - overlap;
+                rowWidth = 8 * heartSpacing + HEART_SIZE + 2 + bonusTextWidth + 1 + HEART_SIZE;
+            }
             int startX = -rowWidth / 2;
             float y = -rowIndex * (HEART_SIZE + HEART_ROW_SPACING);
             for (int i = 0; i < row.size(); i++) {
                 HeartSlot slot = row.get(i);
                 int x = startX + i * HEART_SIZE;
+                if (overflowRow) {
+                    if (i < 8) {
+                        x = startX + i * heartSpacing;
+                    } else {
+                        x = startX + 8 * heartSpacing + (i - 8) * HEART_SIZE;
+                    }
+                }
                 HeartSlotType type = slot.getType();
+                if (type == HeartSlotType.BONUS) {
+                    String text = "+" + slot.getBonusHearts();
+                    int bonusColor = 0xFFFF1313;
+                    int textX = x + 2;
+                    if (overflowRow) {
+                        textX = startX + 8 * heartSpacing + HEART_SIZE - 1;
+                        x = textX + bonusTextWidth + 1;
+                    }
+                    drawInlineTextShadow(tr, matrices, vertexConsumers, text, textX, (int) y, light, bonusColor);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE);
+                    continue;
+                }
+                if (type == HeartSlotType.ELLIPSIS) {
+                    int textWidth = tr.getWidth("...");
+                    int textX = x + (HEART_SIZE - textWidth) / 2;
+                    if (overflowRow) {
+                        x = startX + 8 * heartSpacing;
+                        textX = x + (HEART_SIZE - textWidth) / 2;
+                    }
+                    drawInlineText(tr, matrices, vertexConsumers, "...", textX, (int) y, light, 0xFF000000);
+                    continue;
+                }
                 drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE);
                 if (type == HeartSlotType.FULL) {
                     drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE);
                 } else if (type == HeartSlotType.HALF) {
                     drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_HALF, HEART_SIZE);
-                } else if (type == HeartSlotType.ELLIPSIS) {
-                    drawInlineText(tr, matrices, vertexConsumers, "...", x, (int) y, light, 0xFFFFFFFF);
-                } else if (type == HeartSlotType.BONUS) {
-                    String text = "+" + slot.getBonusHearts();
-                    drawInlineText(tr, matrices, vertexConsumers, text, x, (int) y, light, 0xFFFFFFFF);
-                    drawHeartSprite(matrices, vertexConsumers, x + tr.getWidth(text) + 1, (int) y, HEART_FULL, HEART_SIZE);
                 }
             }
         }
@@ -203,20 +251,32 @@ public abstract class PlayerEntityRendererMixin
     }
 
     private void drawHeartSprite(MatrixStack matrices,
-                                 VertexConsumerProvider vertexConsumers,
+                                 VertexConsumerProvider vertexConsumers,        
                                  int x,
                                  int y,
                                  Identifier sprite,
                                  int size) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!(vertexConsumers instanceof VertexConsumerProvider.Immediate immediate)) {
+        VertexConsumerProvider.Immediate immediate = null;
+        boolean flushImmediate = false;
+        if (vertexConsumers instanceof VertexConsumerProvider.Immediate provided) {
+            immediate = provided;
+        } else if (client != null) {
+            immediate = client.getBufferBuilders().getEntityVertexConsumers();
+            flushImmediate = true;
+        }
+        if (immediate == null) {
             return;
         }
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         net.minecraft.client.gui.DrawContext context = new net.minecraft.client.gui.DrawContext(client, immediate);
         context.getMatrices().push();
         context.getMatrices().multiplyPositionMatrix(matrices.peek().getPositionMatrix());
         context.drawGuiTexture(sprite, x, y, size, size);
         context.getMatrices().pop();
+        if (flushImmediate) {
+            immediate.draw();
+        }
     }
 
     private void drawInlineText(TextRenderer tr,
@@ -231,4 +291,36 @@ public abstract class PlayerEntityRendererMixin
         tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
                 vertexConsumers, TextLayerType.NORMAL, 0, light);
     }
+
+    private void drawInlineTextBold(TextRenderer tr,
+                                    MatrixStack matrices,
+                                    VertexConsumerProvider vertexConsumers,     
+                                    String text,
+                                    int x,
+                                    int y,
+                                    int light,
+                                    int color) {
+        OrderedText ordered = Text.literal(text).asOrderedText();
+        tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
+                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        tr.draw(ordered, x + 1, y + 1, color, false, matrices.peek().getPositionMatrix(),
+                vertexConsumers, TextLayerType.NORMAL, 0, light);
+    }
+
+    private void drawInlineTextShadow(TextRenderer tr,
+                                      MatrixStack matrices,
+                                      VertexConsumerProvider vertexConsumers,
+                                      String text,
+                                      int x,
+                                      int y,
+                                      int light,
+                                      int color) {
+        int shadowColor = 0xFF000000;
+        OrderedText ordered = Text.literal(text).asOrderedText();
+        tr.draw(ordered, x, y + 2, shadowColor, false, matrices.peek().getPositionMatrix(),
+                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
+                vertexConsumers, TextLayerType.NORMAL, 0, light);
+    }
+
 }
