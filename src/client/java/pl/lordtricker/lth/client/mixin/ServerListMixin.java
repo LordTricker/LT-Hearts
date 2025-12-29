@@ -16,11 +16,6 @@ public class ServerListMixin {
         lth$injectOrMove();
     }
 
-    @Inject(method = "load()V", at = @At("TAIL"), cancellable = false, require = 0)
-    private void lth$afterLoad(CallbackInfo ci) {
-        lth$injectOrMove();
-    }
-
     @Unique
     private void lth$injectOrMove() {
         if (!HeartsState.getConfig().adsEnabled) return;

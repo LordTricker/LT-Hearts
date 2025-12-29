@@ -6,18 +6,22 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.font.TextRenderer.TextLayerType;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRendererFactory;
+import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.PlayerEntityRenderer;
-import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -32,9 +36,9 @@ import pl.lordtricker.lth.core.render.HeartsRenderLogic;
 
 import java.util.List;
 
-@Mixin(PlayerEntityRenderer.class)
+@Mixin(LivingEntityRenderer.class)
 public abstract class PlayerEntityRendererMixin
-        extends LivingEntityRenderer<AbstractClientPlayerEntity, PlayerEntityModel<AbstractClientPlayerEntity>> {
+        extends EntityRenderer<AbstractClientPlayerEntity, PlayerEntityRenderState> {
 
     private static final Identifier HEART_FULL = Identifier.ofVanilla("hud/heart/full");
     private static final Identifier HEART_HALF = Identifier.ofVanilla("hud/heart/half");
@@ -43,22 +47,30 @@ public abstract class PlayerEntityRendererMixin
     private static final int DAMAGE_HEART_SIZE = 14;
     private static final int HEART_ROW_SPACING = 2;
 
-    public PlayerEntityRendererMixin(EntityRendererFactory.Context ctx,
-                                     PlayerEntityModel<AbstractClientPlayerEntity> model,
-                                     float shadowRadius) {
-        super(ctx, model, shadowRadius);
+    public PlayerEntityRendererMixin(EntityRendererFactory.Context ctx) {
+        super(ctx);
     }
 
-    @Inject(method = "render(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = @At("TAIL"))
-    private void lth_renderHearts(AbstractClientPlayerEntity player,
-                                  float entityYaw,
-                                  float tickDelta,
+    @Shadow
+    protected abstract boolean hasLabel(LivingEntity entity, double squaredDistance);
+
+    @Inject(method = "render(Lnet/minecraft/client/render/entity/state/LivingEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = @At("TAIL"))
+    private void lth_renderHearts(LivingEntityRenderState state,
                                   MatrixStack matrices,
                                   VertexConsumerProvider vertexConsumers,
                                   int light,
                                   CallbackInfo ci) {
+        if (!(state instanceof PlayerEntityRenderState playerState)) {
+            return;
+        }
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || player.getId() == client.player.getId()) {
+        if (client.player == null || client.world == null) {
+            return;
+        }
+        if (!(client.world.getEntityById(playerState.id) instanceof AbstractClientPlayerEntity player)) {
+            return;
+        }
+        if (player.getId() == client.player.getId()) {
             return;
         }
         if (!HeartsState.getSettings().showHearts && !HeartsState.getSettings().showDamageAnimation) {
@@ -79,7 +91,7 @@ public abstract class PlayerEntityRendererMixin
                 scale,
                 tr.fontHeight,
                 padding,
-                this.hasLabel(player),
+                this.hasLabel(player, distSq),
                 HeartsState.getSettings().extraYOffsetPixels
         );
 
@@ -272,7 +284,7 @@ public abstract class PlayerEntityRendererMixin
         net.minecraft.client.gui.DrawContext context = new net.minecraft.client.gui.DrawContext(client, immediate);
         context.getMatrices().push();
         context.getMatrices().multiplyPositionMatrix(matrices.peek().getPositionMatrix());
-        context.drawGuiTexture(sprite, x, y, size, size);
+        context.drawGuiTexture(RenderLayer::getGuiTextured, sprite, x, y, size, size);
         context.getMatrices().pop();
         if (flushImmediate) {
             immediate.draw();
