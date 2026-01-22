@@ -30,9 +30,10 @@ public class PersistentProjectileEntityMixin {
         }
         Entity target = hitResult.getEntity();
         if (target instanceof AbstractClientPlayerEntity targetPlayer) {
-            long worldTime = client.world != null
-                    ? client.world.getTime()
-                    : targetPlayer.getWorld().getTime();
+            if (client.world == null) {
+                return;
+            }
+            long worldTime = client.world.getTime();
             boolean critical = projectile.isCritical();
             ClientDamageTracker.recordAttack(targetPlayer.getId(), worldTime, critical);
             ClientCombatTracker.recordCombatWith(targetPlayer.getId(), worldTime);

@@ -1,5 +1,6 @@
 package pl.lordtricker.lth.client.mixin;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.entity.Entity;
@@ -18,6 +19,10 @@ public class ClientPlayerInteractionManagerMixin {
     @Inject(method = "attackEntity", at = @At("TAIL"))
     private void lth_onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
         if (target instanceof AbstractClientPlayerEntity) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.world == null) {
+                return;
+            }
             boolean isCrit = CriticalHitRules.isCritical(
                     (float) player.fallDistance,
                     player.isOnGround(),
@@ -27,8 +32,9 @@ public class ClientPlayerInteractionManagerMixin {
                     player.hasVehicle(),
                     player.isSprinting()
             );
-            ClientDamageTracker.recordAttack(target.getId(), player.getWorld().getTime(), isCrit);
-            ClientCombatTracker.recordCombatWith(target.getId(), player.getWorld().getTime());
+            long worldTime = client.world.getTime();
+            ClientDamageTracker.recordAttack(target.getId(), worldTime, isCrit);
+            ClientCombatTracker.recordCombatWith(target.getId(), worldTime);
         }
     }
 }

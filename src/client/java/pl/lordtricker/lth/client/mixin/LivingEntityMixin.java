@@ -1,5 +1,6 @@
 package pl.lordtricker.lth.client.mixin;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.LivingEntity;
@@ -22,7 +23,11 @@ public class LivingEntityMixin {
             return;
         }
         if (source.getAttacker() instanceof AbstractClientPlayerEntity attacker) {
-            ClientCombatTracker.recordCombatWith(attacker.getId(), attacker.getWorld().getTime());
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.world == null) {
+                return;
+            }
+            ClientCombatTracker.recordCombatWith(attacker.getId(), client.world.getTime());
         }
     }
 }

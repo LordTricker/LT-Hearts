@@ -8,14 +8,17 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.client.render.TexturedRenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.util.SpriteIdentifier;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.texture.Sprite;
@@ -61,11 +64,11 @@ public abstract class PlayerEntityRendererMixin
     @Shadow
     protected abstract boolean hasLabel(LivingEntity entity, double squaredDistance);
 
-    @Inject(method = "render(Lnet/minecraft/client/render/entity/state/LivingEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = @At("TAIL"))
+    @Inject(method = "render(Lnet/minecraft/client/render/entity/state/LivingEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;Lnet/minecraft/client/render/state/CameraRenderState;)V", at = @At("TAIL"))
     private void lth_renderHearts(LivingEntityRenderState state,
                                   MatrixStack matrices,
-                                  VertexConsumerProvider vertexConsumers,
-                                  int light,
+                                  OrderedRenderCommandQueue renderQueue,
+                                  CameraRenderState cameraState,
                                   CallbackInfo ci) {
         if (!(state instanceof PlayerEntityRenderState playerState)) {
             return;
@@ -85,7 +88,12 @@ public abstract class PlayerEntityRendererMixin
         }
 
         int maxDistBlocks = HeartsRenderLogic.clampDistance(HeartsState.getSettings().maxRenderDistanceBlocks);
-        double distSq = this.dispatcher.getSquaredDistanceToCamera(player);
+        double distSq;
+        if (cameraState != null && cameraState.initialized && cameraState.pos != null) {
+            distSq = player.squaredDistanceTo(cameraState.pos);
+        } else {
+            distSq = player.squaredDistanceTo(client.player);
+        }
         double maxDistSq = (double) maxDistBlocks * (double) maxDistBlocks;
         long worldTime = client.world.getTime();
         int combatSeconds = HeartsConfigLimits.clampCombatMemorySeconds(
@@ -140,7 +148,7 @@ public abstract class PlayerEntityRendererMixin
         int fullBright = LightmapTextureManager.MAX_LIGHT_COORDINATE;
         if (renderHearts) {
             HeartsDisplayLayout layout = HeartsDisplayLayout.build(player.getHealth(), player.getMaxHealth());
-            renderHearts(layout, matrices, vertexConsumers, tr, fullBright);
+            renderHearts(layout, matrices, renderQueue, tr, fullBright);
         }
 
         if (renderDamage) {
@@ -162,7 +170,7 @@ public abstract class PlayerEntityRendererMixin
                             2.0f,
                             DAMAGE_HEART_SIZE * 3.0f
                     );
-                    renderDamageLine(dmgText, lineOffset, matrices, vertexConsumers, tr, fullBright, color, alpha, indicator.isCritical());
+                    renderDamageLine(dmgText, lineOffset, matrices, renderQueue, tr, fullBright, color, alpha, indicator.isCritical());
                     index++;
                 }
             }
@@ -178,7 +186,7 @@ public abstract class PlayerEntityRendererMixin
 
     private void renderHearts(HeartsDisplayLayout layout,
                               MatrixStack matrices,
-                              VertexConsumerProvider vertexConsumers,
+                              OrderedRenderCommandQueue renderQueue,
                               TextRenderer tr,
                               int light) {
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
@@ -236,9 +244,9 @@ public abstract class PlayerEntityRendererMixin
                         textX = startX + 8 * heartSpacing + HEART_SIZE - 1;
                         x = textX + bonusTextWidth + 1;
                     }
-                    drawInlineTextShadow(tr, matrices, vertexConsumers, text, textX, (int) y, light, bonusColor);
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE, light);
+                    drawInlineTextShadow(tr, matrices, renderQueue, text, textX, (int) y, light, bonusColor);
+                    drawHeartSprite(matrices, renderQueue, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
+                    drawHeartSprite(matrices, renderQueue, x, (int) y, HEART_FULL, HEART_SIZE, light);
                     continue;
                 }
                 if (type == HeartSlotType.ELLIPSIS) {
@@ -248,14 +256,14 @@ public abstract class PlayerEntityRendererMixin
                         x = startX + 8 * heartSpacing;
                         textX = x + (HEART_SIZE - textWidth) / 2;
                     }
-                    drawInlineText(tr, matrices, vertexConsumers, "...", textX, (int) y, light, 0xFF000000);
+                    drawInlineText(tr, matrices, renderQueue, "...", textX, (int) y, light, 0xFF000000);
                     continue;
                 }
-                drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
+                drawHeartSprite(matrices, renderQueue, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
                 if (type == HeartSlotType.FULL) {
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE, light);
+                    drawHeartSprite(matrices, renderQueue, x, (int) y, HEART_FULL, HEART_SIZE, light);
                 } else if (type == HeartSlotType.HALF) {
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_HALF, HEART_SIZE, light);
+                    drawHeartSprite(matrices, renderQueue, x, (int) y, HEART_HALF, HEART_SIZE, light);
                 }
             }
         }
@@ -264,7 +272,7 @@ public abstract class PlayerEntityRendererMixin
     private void renderDamageLine(String text,
                                   float lineOffset,
                                   MatrixStack matrices,
-                                  VertexConsumerProvider vertexConsumers,
+                                  OrderedRenderCommandQueue renderQueue,
                                   TextRenderer tr,
                                   int light,
                                   int color,
@@ -276,21 +284,20 @@ public abstract class PlayerEntityRendererMixin
         int totalWidth = textWidth + 1 + DAMAGE_HEART_SIZE + critWidth;
         float startX = -totalWidth / 2f;
         OrderedText ordered = Text.literal(text).asOrderedText();
-        tr.draw(ordered, startX, lineOffset, color,
-                false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        renderQueue.submitText(matrices, startX, lineOffset, ordered, false, TextLayerType.SEE_THROUGH, light, color, 0, 0);
         int heartX = (int) (startX + textWidth + 1);
-        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_EMPTY, DAMAGE_HEART_SIZE, light);
-        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_FULL, DAMAGE_HEART_SIZE, light);
+        drawHeartSprite(matrices, renderQueue, heartX, (int) lineOffset - 2, HEART_EMPTY, DAMAGE_HEART_SIZE, light);
+        drawHeartSprite(matrices, renderQueue, heartX, (int) lineOffset - 2, HEART_FULL, DAMAGE_HEART_SIZE, light);
         if (critical) {
             int critX = heartX + DAMAGE_HEART_SIZE + 3;
             int critColor = (alpha << 24) | 0xFFFF9900;
-            drawInlineText(tr, matrices, vertexConsumers, "CRIT", critX, (int) lineOffset, light, critColor);
+            OrderedText critText = Text.literal("CRIT").asOrderedText();
+            renderQueue.submitText(matrices, critX, (int) lineOffset + 1, critText, false, TextLayerType.SEE_THROUGH, light, critColor, 0, 0);
         }
     }
 
     private void drawHeartSprite(MatrixStack matrices,
-                                 VertexConsumerProvider vertexConsumers,
+                                 OrderedRenderCommandQueue renderQueue,
                                  int x,
                                  int y,
                                  Identifier sprite,
@@ -300,77 +307,76 @@ public abstract class PlayerEntityRendererMixin
         if (client == null) {
             return;
         }
-        Sprite guiSprite = client.getGuiAtlasManager().getSprite(sprite);
+        SpriteIdentifier spriteId = new SpriteIdentifier(TexturedRenderLayers.GUI_ATLAS_TEXTURE, sprite);
+        Sprite guiSprite = client.getAtlasManager().getSprite(spriteId);
         RenderLayer layer = RenderLayer.getEntityTranslucent(guiSprite.getAtlasId());
-        VertexConsumer consumer = guiSprite.getTextureSpecificVertexConsumer(vertexConsumers.getBuffer(layer));
+        renderQueue.submitCustom(matrices, layer, (entry, consumer) -> {
+            VertexConsumer spriteConsumer = guiSprite.getTextureSpecificVertexConsumer(consumer);
 
-        float x0 = x;
-        float x1 = x + size;
-        float y0 = y;
-        float y1 = y + size;
-        float minU = guiSprite.getMinU();
-        float maxU = guiSprite.getMaxU();
-        float minV = guiSprite.getMinV();
-        float maxV = guiSprite.getMaxV();
-        MatrixStack.Entry entry = matrices.peek();
+            float x0 = x;
+            float x1 = x + size;
+            float y0 = y;
+            float y1 = y + size;
+            float minU = guiSprite.getMinU();
+            float maxU = guiSprite.getMaxU();
+            float minV = guiSprite.getMinV();
+            float maxV = guiSprite.getMaxV();
 
-        consumer.vertex(entry, x0, y1, 0.0f)
-                .color(255, 255, 255, 255)
-                .texture(minU, maxV)
-                .overlay(OverlayTexture.DEFAULT_UV)
-                .light(light)
-                .normal(entry, 0.0f, 0.0f, 1.0f);
-        consumer.vertex(entry, x1, y1, 0.0f)
-                .color(255, 255, 255, 255)
-                .texture(maxU, maxV)
-                .overlay(OverlayTexture.DEFAULT_UV)
-                .light(light)
-                .normal(entry, 0.0f, 0.0f, 1.0f);
-        consumer.vertex(entry, x1, y0, 0.0f)
-                .color(255, 255, 255, 255)
-                .texture(maxU, minV)
-                .overlay(OverlayTexture.DEFAULT_UV)
-                .light(light)
-                .normal(entry, 0.0f, 0.0f, 1.0f);
-        consumer.vertex(entry, x0, y0, 0.0f)
-                .color(255, 255, 255, 255)
-                .texture(minU, minV)
-                .overlay(OverlayTexture.DEFAULT_UV)
-                .light(light)
-                .normal(entry, 0.0f, 0.0f, 1.0f);
+            spriteConsumer.vertex(entry, x0, y1, 0.0f)
+                    .color(255, 255, 255, 255)
+                    .texture(minU, maxV)
+                    .overlay(OverlayTexture.DEFAULT_UV)
+                    .light(light)
+                    .normal(entry, 0.0f, 0.0f, 1.0f);
+            spriteConsumer.vertex(entry, x1, y1, 0.0f)
+                    .color(255, 255, 255, 255)
+                    .texture(maxU, maxV)
+                    .overlay(OverlayTexture.DEFAULT_UV)
+                    .light(light)
+                    .normal(entry, 0.0f, 0.0f, 1.0f);
+            spriteConsumer.vertex(entry, x1, y0, 0.0f)
+                    .color(255, 255, 255, 255)
+                    .texture(maxU, minV)
+                    .overlay(OverlayTexture.DEFAULT_UV)
+                    .light(light)
+                    .normal(entry, 0.0f, 0.0f, 1.0f);
+            spriteConsumer.vertex(entry, x0, y0, 0.0f)
+                    .color(255, 255, 255, 255)
+                    .texture(minU, minV)
+                    .overlay(OverlayTexture.DEFAULT_UV)
+                    .light(light)
+                    .normal(entry, 0.0f, 0.0f, 1.0f);
+        });
     }
 
     private void drawInlineText(TextRenderer tr,
                                 MatrixStack matrices,
-                                VertexConsumerProvider vertexConsumers,
+                                OrderedRenderCommandQueue renderQueue,
                                 String text,
                                 int x,
                                 int y,
                                 int light,
                                 int color) {
         OrderedText ordered = Text.literal(text).asOrderedText();
-        tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        renderQueue.submitText(matrices, x, y + 1, ordered, false, TextLayerType.NORMAL, light, color, 0, 0);
     }
 
     private void drawInlineTextBold(TextRenderer tr,
                                     MatrixStack matrices,
-                                    VertexConsumerProvider vertexConsumers,     
+                                    OrderedRenderCommandQueue renderQueue,
                                     String text,
                                     int x,
                                     int y,
                                     int light,
                                     int color) {
         OrderedText ordered = Text.literal(text).asOrderedText();
-        tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
-        tr.draw(ordered, x + 1, y + 1, color, false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        renderQueue.submitText(matrices, x, y + 1, ordered, false, TextLayerType.NORMAL, light, color, 0, 0);
+        renderQueue.submitText(matrices, x + 1, y + 1, ordered, false, TextLayerType.NORMAL, light, color, 0, 0);
     }
 
     private void drawInlineTextShadow(TextRenderer tr,
                                       MatrixStack matrices,
-                                      VertexConsumerProvider vertexConsumers,
+                                      OrderedRenderCommandQueue renderQueue,
                                       String text,
                                       int x,
                                       int y,
@@ -378,10 +384,8 @@ public abstract class PlayerEntityRendererMixin
                                       int color) {
         int shadowColor = 0xFF000000;
         OrderedText ordered = Text.literal(text).asOrderedText();
-        tr.draw(ordered, x, y + 2, shadowColor, false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
-        tr.draw(ordered, x, y + 1, color, false, matrices.peek().getPositionMatrix(),
-                vertexConsumers, TextLayerType.NORMAL, 0, light);
+        renderQueue.submitText(matrices, x, y + 2, ordered, false, TextLayerType.NORMAL, light, shadowColor, 0, 0);
+        renderQueue.submitText(matrices, x, y + 1, ordered, false, TextLayerType.NORMAL, light, color, 0, 0);
     }
 
 }
