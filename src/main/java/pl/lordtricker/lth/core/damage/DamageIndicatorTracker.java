@@ -58,7 +58,9 @@ public final class DamageIndicatorTracker {
 
         lastHealth.keySet().retainAll(activeIds);
         indicators.keySet().retainAll(activeIds);
+    }
 
+    public void tickIndicators() {
         for (Iterator<Map.Entry<Integer, List<DamageIndicator>>> it = indicators.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Integer, List<DamageIndicator>> entry = it.next();
             List<DamageIndicator> list = entry.getValue();

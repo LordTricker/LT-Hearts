@@ -22,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import pl.lordtricker.lth.client.render.ClientDamageTracker;
+import pl.lordtricker.lth.client.render.ClientHeartsVisibility;
 import pl.lordtricker.lth.core.HeartsState;
 import pl.lordtricker.lth.core.damage.DamageIndicator;
 import pl.lordtricker.lth.core.damage.DamageIndicatorTracker;
@@ -68,7 +69,7 @@ public abstract class PlayerEntityRendererMixin
         int maxDistBlocks = HeartsRenderLogic.clampDistance(HeartsState.getSettings().maxRenderDistanceBlocks);
         double distSq = this.dispatcher.getSquaredDistanceToCamera(player);
         double maxDistSq = (double) maxDistBlocks * (double) maxDistBlocks;
-        if (distSq > maxDistSq) {
+        if (!ClientHeartsVisibility.shouldRender(player.getId(), distSq, maxDistSq)) {
             return;
         }
 
