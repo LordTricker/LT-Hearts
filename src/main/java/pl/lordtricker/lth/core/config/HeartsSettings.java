@@ -6,6 +6,5 @@ public class HeartsSettings {
     public int extraYOffsetPixels = 0;
     public int maxRenderDistanceBlocks = 16;
     public int maxVisiblePlayers = 30;
-    public int refreshIntervalTicks = 2;
     public int combatMemorySeconds = 30;
 }

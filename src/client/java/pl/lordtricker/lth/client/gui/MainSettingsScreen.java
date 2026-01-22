@@ -14,14 +14,12 @@ import pl.lordtricker.lth.core.config.HeartsConfigLimits;
 public class MainSettingsScreen extends Screen {
     private SliderWidget offsetSlider;
     private SliderWidget distanceSlider;
-    private SliderWidget refreshSlider;
     private SliderWidget combatMemorySlider;
     private ButtonWidget heartsToggleBtn;
     private ButtonWidget damageToggleBtn;
     private ButtonWidget saveButton;
     private int offsetPixels;
     private int distanceBlocks;
-    private int refreshIntervalTicks;
     private int combatMemorySeconds;
     private boolean showHearts;
     private boolean showDamageAnimation;
@@ -36,13 +34,12 @@ public class MainSettingsScreen extends Screen {
         int btnWidth = 170;
         int btnHeight = 20;
         int spacing = 5;
-        int totalHeight = btnHeight * 7 + spacing * 6;
+        int totalHeight = btnHeight * 6 + spacing * 5;
         int startY = (this.height - totalHeight) / 2;
 
         HeartsSettings settings = HeartsState.getSettings();
         offsetPixels = HeartsConfigLimits.clampOffset(settings.extraYOffsetPixels);
         distanceBlocks = HeartsConfigLimits.clampDistance(settings.maxRenderDistanceBlocks);
-        refreshIntervalTicks = HeartsConfigLimits.clampRefreshInterval(settings.refreshIntervalTicks);
         combatMemorySeconds = HeartsConfigLimits.clampCombatMemorySeconds(settings.combatMemorySeconds);
         showHearts = settings.showHearts;
         showDamageAnimation = settings.showDamageAnimation;
@@ -99,25 +96,8 @@ public class MainSettingsScreen extends Screen {
         };
         addDrawableChild(distanceSlider);
 
-        refreshSlider = new SliderWidget(
-                centerX - btnWidth / 2, startY + 4 * (btnHeight + spacing), btnWidth, btnHeight,
-                Text.literal(formatRefreshLabel(refreshIntervalTicks)), normalizeRefreshInterval(refreshIntervalTicks)
-        ) {
-            @Override
-            protected void updateMessage() {
-                int value = HeartsConfigLimits.denormalizeRefreshInterval(this.value);
-                this.setMessage(Text.literal(formatRefreshLabel(value)));
-            }
-
-            @Override
-            protected void applyValue() {
-                refreshIntervalTicks = HeartsConfigLimits.denormalizeRefreshInterval(this.value);
-            }
-        };
-        addDrawableChild(refreshSlider);
-
         combatMemorySlider = new SliderWidget(
-                centerX - btnWidth / 2, startY + 5 * (btnHeight + spacing), btnWidth, btnHeight,
+                centerX - btnWidth / 2, startY + 4 * (btnHeight + spacing), btnWidth, btnHeight,
                 Text.literal(formatCombatMemoryLabel(combatMemorySeconds)),
                 normalizeCombatMemory(combatMemorySeconds)
         ) {
@@ -142,14 +122,13 @@ public class MainSettingsScreen extends Screen {
                     current.showDamageAnimation = showDamageAnimation;
                     current.extraYOffsetPixels = offsetPixels;
                     current.maxRenderDistanceBlocks = distanceBlocks;
-                    current.refreshIntervalTicks = refreshIntervalTicks;
                     current.combatMemorySeconds = combatMemorySeconds;
                     ConfigLoader.saveConfig(HeartsState.getConfig());
                     if (this.client != null) {
                         this.client.setScreen(null);
                     }
                 }
-        ).dimensions(centerX - btnWidth / 2, startY + 6 * (btnHeight + spacing), btnWidth, btnHeight).build();
+        ).dimensions(centerX - btnWidth / 2, startY + 5 * (btnHeight + spacing), btnWidth, btnHeight).build();
         addDrawableChild(saveButton);
     }
 
@@ -160,7 +139,6 @@ public class MainSettingsScreen extends Screen {
         current.showDamageAnimation = showDamageAnimation;
         current.extraYOffsetPixels = offsetPixels;
         current.maxRenderDistanceBlocks = distanceBlocks;
-        current.refreshIntervalTicks = refreshIntervalTicks;
         current.combatMemorySeconds = combatMemorySeconds;
         ConfigLoader.saveConfig(HeartsState.getConfig());
         super.removed();
@@ -186,10 +164,6 @@ public class MainSettingsScreen extends Screen {
         return "Max distance: " + value;
     }
 
-    private static String formatRefreshLabel(int value) {
-        return "Refresh: " + value + "t";
-    }
-
     private static String formatCombatMemoryLabel(int value) {
         return "Combat memory: " + value + "s";
     }
@@ -200,10 +174,6 @@ public class MainSettingsScreen extends Screen {
 
     private static double normalizeDistance(int value) {
         return HeartsConfigLimits.normalizeDistance(value);
-    }
-
-    private static double normalizeRefreshInterval(int value) {
-        return HeartsConfigLimits.normalizeRefreshInterval(value);
     }
 
     private static double normalizeCombatMemory(int value) {

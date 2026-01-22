@@ -25,6 +25,13 @@ public final class DamageIndicatorTracker {
     }
 
     public void updateHealth(Map<Integer, Float> healthById, int localPlayerId, long worldTime) {
+        updateHealth(healthById, localPlayerId, worldTime, true);
+    }
+
+    public void updateHealth(Map<Integer, Float> healthById,
+                             int localPlayerId,
+                             long worldTime,
+                             boolean pruneMissing) {
         if (healthById == null) {
             clear();
             return;
@@ -56,8 +63,10 @@ public final class DamageIndicatorTracker {
             }
         }
 
-        lastHealth.keySet().retainAll(activeIds);
-        indicators.keySet().retainAll(activeIds);
+        if (pruneMissing) {
+            lastHealth.keySet().retainAll(activeIds);
+            indicators.keySet().retainAll(activeIds);
+        }
     }
 
     public void tickIndicators() {
