@@ -8,6 +8,7 @@ import net.minecraft.text.Text;
 import pl.lordtricker.lth.client.command.ClientCommandRegistration;
 import pl.lordtricker.lth.client.config.ConfigLoader;
 import pl.lordtricker.lth.client.render.ClientDamageTracker;
+import pl.lordtricker.lth.client.render.ClientHeartsVisibility;
 import pl.lordtricker.lth.client.util.ColorUtils;
 import pl.lordtricker.lth.core.HeartsState;
 import pl.lordtricker.lth.util.Messages;
@@ -29,6 +30,7 @@ public class LTHeartsClient implements ClientModInitializer {
 
         ClientCommandRegistration.registerCommands();
         ClientTickEvents.END_CLIENT_TICK.register(ClientDamageTracker::onClientTick);
+        ClientTickEvents.END_CLIENT_TICK.register(ClientHeartsVisibility::onClientTick);
     }
 
     private static void sendMissingMessage(String message) {

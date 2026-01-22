@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import pl.lordtricker.lth.client.render.ClientCombatTracker;
 import pl.lordtricker.lth.client.render.ClientDamageTracker;
 import pl.lordtricker.lth.core.combat.CriticalHitRules;
 
@@ -27,6 +28,7 @@ public class ClientPlayerInteractionManagerMixin {
                     player.isSprinting()
             );
             ClientDamageTracker.recordAttack(target.getId(), player.getWorld().getTime(), isCrit);
+            ClientCombatTracker.recordCombatWith(target.getId(), player.getWorld().getTime());
         }
     }
 }

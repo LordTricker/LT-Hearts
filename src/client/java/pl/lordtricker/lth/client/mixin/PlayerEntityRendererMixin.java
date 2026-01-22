@@ -25,8 +25,11 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import pl.lordtricker.lth.client.render.ClientCombatTracker;
+import pl.lordtricker.lth.client.render.ClientHeartsVisibility;
 import pl.lordtricker.lth.client.render.ClientDamageTracker;
 import pl.lordtricker.lth.core.HeartsState;
+import pl.lordtricker.lth.core.config.HeartsConfigLimits;
 import pl.lordtricker.lth.core.damage.DamageIndicator;
 import pl.lordtricker.lth.core.damage.DamageIndicatorTracker;
 import pl.lordtricker.lth.core.render.HeartSlot;
@@ -80,7 +83,22 @@ public abstract class PlayerEntityRendererMixin
         int maxDistBlocks = HeartsRenderLogic.clampDistance(HeartsState.getSettings().maxRenderDistanceBlocks);
         double distSq = this.dispatcher.getSquaredDistanceToCamera(player);
         double maxDistSq = (double) maxDistBlocks * (double) maxDistBlocks;
-        if (distSq > maxDistSq) {
+        long worldTime = client.world.getTime();
+        int combatSeconds = HeartsConfigLimits.clampCombatMemorySeconds(
+                HeartsState.getSettings().combatMemorySeconds
+        );
+        int combatTicks = combatSeconds * 20;
+        boolean inCombat = ClientCombatTracker.isActive(player.getId(), worldTime, combatTicks);
+        boolean canRenderHearts = ClientHeartsVisibility.shouldRender(player.getId(), distSq, maxDistSq);
+        boolean renderHearts = HeartsState.getSettings().showHearts && (inCombat || canRenderHearts);
+        List<DamageIndicator> indicators = List.of();
+        if (HeartsState.getSettings().showDamageAnimation) {
+            indicators = ClientDamageTracker.getIndicators(player.getId());
+        }
+        boolean renderDamage = HeartsState.getSettings().showDamageAnimation
+                && !indicators.isEmpty()
+                && (inCombat || distSq <= maxDistSq);
+        if (!renderHearts && !renderDamage) {
             return;
         }
 
@@ -110,13 +128,12 @@ public abstract class PlayerEntityRendererMixin
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.depthMask(true);
 
-        if (HeartsState.getSettings().showHearts) {
+        if (renderHearts) {
             HeartsDisplayLayout layout = HeartsDisplayLayout.build(player.getHealth(), player.getMaxHealth());
             renderHearts(layout, matrices, vertexConsumers, tr, light);
         }
 
-        if (HeartsState.getSettings().showDamageAnimation) {
-            List<DamageIndicator> indicators = ClientDamageTracker.getIndicators(player.getId());
+        if (renderDamage) {
             if (!indicators.isEmpty()) {
                 int fontHeight = tr.fontHeight;
                 int index = 0;

@@ -3,9 +3,12 @@
 	"package": "pl.lordtricker.lth.client.mixin",
     "compatibilityLevel": "JAVA_21",
     "mixins": [
+        "ClientPlayNetworkHandlerMixin",
         "ClientPlayerInteractionManagerMixin",
+        "LivingEntityMixin",
         "MultiplayerScreenMixin",
         "PlayerEntityRendererMixin",
+        "PersistentProjectileEntityMixin",
         "ServerListAccessor",
         "ServerListMixin"
     ],

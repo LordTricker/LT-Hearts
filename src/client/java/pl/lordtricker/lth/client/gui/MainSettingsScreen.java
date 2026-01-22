@@ -14,11 +14,13 @@ import pl.lordtricker.lth.core.config.HeartsConfigLimits;
 public class MainSettingsScreen extends Screen {
     private SliderWidget offsetSlider;
     private SliderWidget distanceSlider;
+    private SliderWidget combatMemorySlider;
     private ButtonWidget heartsToggleBtn;
     private ButtonWidget damageToggleBtn;
     private ButtonWidget saveButton;
     private int offsetPixels;
     private int distanceBlocks;
+    private int combatMemorySeconds;
     private boolean showHearts;
     private boolean showDamageAnimation;
 
@@ -32,12 +34,13 @@ public class MainSettingsScreen extends Screen {
         int btnWidth = 170;
         int btnHeight = 20;
         int spacing = 5;
-        int totalHeight = btnHeight * 5 + spacing * 4;
+        int totalHeight = btnHeight * 6 + spacing * 5;
         int startY = (this.height - totalHeight) / 2;
 
         HeartsSettings settings = HeartsState.getSettings();
         offsetPixels = HeartsConfigLimits.clampOffset(settings.extraYOffsetPixels);
         distanceBlocks = HeartsConfigLimits.clampDistance(settings.maxRenderDistanceBlocks);
+        combatMemorySeconds = HeartsConfigLimits.clampCombatMemorySeconds(settings.combatMemorySeconds);
         showHearts = settings.showHearts;
         showDamageAnimation = settings.showDamageAnimation;
 
@@ -93,6 +96,24 @@ public class MainSettingsScreen extends Screen {
         };
         addDrawableChild(distanceSlider);
 
+        combatMemorySlider = new SliderWidget(
+                centerX - btnWidth / 2, startY + 4 * (btnHeight + spacing), btnWidth, btnHeight,
+                Text.literal(formatCombatMemoryLabel(combatMemorySeconds)),
+                normalizeCombatMemory(combatMemorySeconds)
+        ) {
+            @Override
+            protected void updateMessage() {
+                int value = HeartsConfigLimits.denormalizeCombatMemorySeconds(this.value);
+                this.setMessage(Text.literal(formatCombatMemoryLabel(value)));
+            }
+
+            @Override
+            protected void applyValue() {
+                combatMemorySeconds = HeartsConfigLimits.denormalizeCombatMemorySeconds(this.value);
+            }
+        };
+        addDrawableChild(combatMemorySlider);
+
         saveButton = ButtonWidget.builder(
                 Text.literal("Save and Close"),
                 btn -> {
@@ -101,12 +122,13 @@ public class MainSettingsScreen extends Screen {
                     current.showDamageAnimation = showDamageAnimation;
                     current.extraYOffsetPixels = offsetPixels;
                     current.maxRenderDistanceBlocks = distanceBlocks;
+                    current.combatMemorySeconds = combatMemorySeconds;
                     ConfigLoader.saveConfig(HeartsState.getConfig());
                     if (this.client != null) {
                         this.client.setScreen(null);
                     }
                 }
-        ).dimensions(centerX - btnWidth / 2, startY + 4 * (btnHeight + spacing), btnWidth, btnHeight).build();
+        ).dimensions(centerX - btnWidth / 2, startY + 5 * (btnHeight + spacing), btnWidth, btnHeight).build();
         addDrawableChild(saveButton);
     }
 
@@ -117,6 +139,7 @@ public class MainSettingsScreen extends Screen {
         current.showDamageAnimation = showDamageAnimation;
         current.extraYOffsetPixels = offsetPixels;
         current.maxRenderDistanceBlocks = distanceBlocks;
+        current.combatMemorySeconds = combatMemorySeconds;
         ConfigLoader.saveConfig(HeartsState.getConfig());
         super.removed();
     }
@@ -141,11 +164,19 @@ public class MainSettingsScreen extends Screen {
         return "Max distance: " + value;
     }
 
+    private static String formatCombatMemoryLabel(int value) {
+        return "Combat memory: " + value + "s";
+    }
+
     private static double normalizeOffset(int value) {
         return HeartsConfigLimits.normalizeOffset(value);
     }
 
     private static double normalizeDistance(int value) {
         return HeartsConfigLimits.normalizeDistance(value);
+    }
+
+    private static double normalizeCombatMemory(int value) {
+        return HeartsConfigLimits.normalizeCombatMemorySeconds(value);
     }
 }

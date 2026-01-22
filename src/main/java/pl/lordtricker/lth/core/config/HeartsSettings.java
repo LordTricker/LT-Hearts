@@ -5,4 +5,6 @@ public class HeartsSettings {
     public boolean showDamageAnimation = true;
     public int extraYOffsetPixels = 0;
     public int maxRenderDistanceBlocks = 16;
+    public int maxVisiblePlayers = 30;
+    public int combatMemorySeconds = 30;
 }
