@@ -1,13 +1,15 @@
 package pl.lordtricker.lth.client.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.font.TextRenderer.TextLayerType;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
@@ -15,6 +17,8 @@ import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.texture.Sprite;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -122,15 +126,21 @@ public abstract class PlayerEntityRendererMixin
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
         matrices.scale(-scale, -scale, scale);
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-        RenderSystem.depthMask(true);
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(
+                GL11.GL_SRC_ALPHA,
+                GL11.GL_ONE_MINUS_SRC_ALPHA,
+                GL11.GL_ONE,
+                GL11.GL_ONE_MINUS_SRC_ALPHA
+        );
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._depthMask(true);
 
+        int fullBright = LightmapTextureManager.MAX_LIGHT_COORDINATE;
         if (renderHearts) {
             HeartsDisplayLayout layout = HeartsDisplayLayout.build(player.getHealth(), player.getMaxHealth());
-            renderHearts(layout, matrices, vertexConsumers, tr, light);
+            renderHearts(layout, matrices, vertexConsumers, tr, fullBright);
         }
 
         if (renderDamage) {
@@ -152,16 +162,16 @@ public abstract class PlayerEntityRendererMixin
                             2.0f,
                             DAMAGE_HEART_SIZE * 3.0f
                     );
-                    renderDamageLine(dmgText, lineOffset, matrices, vertexConsumers, tr, light, color, alpha, indicator.isCritical());
+                    renderDamageLine(dmgText, lineOffset, matrices, vertexConsumers, tr, fullBright, color, alpha, indicator.isCritical());
                     index++;
                 }
             }
         }
 
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        GlStateManager._depthMask(true);
+        GlStateManager._enableDepthTest();
+        GlStateManager._disableBlend();
 
         matrices.pop();
     }
@@ -171,7 +181,7 @@ public abstract class PlayerEntityRendererMixin
                               VertexConsumerProvider vertexConsumers,
                               TextRenderer tr,
                               int light) {
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
         if (layout == null || layout.getRows().isEmpty()) {
             return;
         }
@@ -227,8 +237,8 @@ public abstract class PlayerEntityRendererMixin
                         x = textX + bonusTextWidth + 1;
                     }
                     drawInlineTextShadow(tr, matrices, vertexConsumers, text, textX, (int) y, light, bonusColor);
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE);
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE, light);
                     continue;
                 }
                 if (type == HeartSlotType.ELLIPSIS) {
@@ -241,11 +251,11 @@ public abstract class PlayerEntityRendererMixin
                     drawInlineText(tr, matrices, vertexConsumers, "...", textX, (int) y, light, 0xFF000000);
                     continue;
                 }
-                drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE);
+                drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_EMPTY, HEART_SIZE, light);
                 if (type == HeartSlotType.FULL) {
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_FULL, HEART_SIZE, light);
                 } else if (type == HeartSlotType.HALF) {
-                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_HALF, HEART_SIZE);
+                    drawHeartSprite(matrices, vertexConsumers, x, (int) y, HEART_HALF, HEART_SIZE, light);
                 }
             }
         }
@@ -260,7 +270,7 @@ public abstract class PlayerEntityRendererMixin
                                   int color,
                                   int alpha,
                                   boolean critical) {
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
         int textWidth = tr.getWidth(text);
         int critWidth = critical ? tr.getWidth("CRIT") + 3 : 0;
         int totalWidth = textWidth + 1 + DAMAGE_HEART_SIZE + critWidth;
@@ -270,8 +280,8 @@ public abstract class PlayerEntityRendererMixin
                 false, matrices.peek().getPositionMatrix(),
                 vertexConsumers, TextLayerType.NORMAL, 0, light);
         int heartX = (int) (startX + textWidth + 1);
-        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_EMPTY, DAMAGE_HEART_SIZE);
-        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_FULL, DAMAGE_HEART_SIZE);
+        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_EMPTY, DAMAGE_HEART_SIZE, light);
+        drawHeartSprite(matrices, vertexConsumers, heartX, (int) lineOffset - 2, HEART_FULL, DAMAGE_HEART_SIZE, light);
         if (critical) {
             int critX = heartX + DAMAGE_HEART_SIZE + 3;
             int critColor = (alpha << 24) | 0xFFFF9900;
@@ -280,32 +290,54 @@ public abstract class PlayerEntityRendererMixin
     }
 
     private void drawHeartSprite(MatrixStack matrices,
-                                 VertexConsumerProvider vertexConsumers,        
+                                 VertexConsumerProvider vertexConsumers,
                                  int x,
                                  int y,
                                  Identifier sprite,
-                                 int size) {
+                                 int size,
+                                 int light) {
         MinecraftClient client = MinecraftClient.getInstance();
-        VertexConsumerProvider.Immediate immediate = null;
-        boolean flushImmediate = false;
-        if (vertexConsumers instanceof VertexConsumerProvider.Immediate provided) {
-            immediate = provided;
-        } else if (client != null) {
-            immediate = client.getBufferBuilders().getEntityVertexConsumers();
-            flushImmediate = true;
-        }
-        if (immediate == null) {
+        if (client == null) {
             return;
         }
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        net.minecraft.client.gui.DrawContext context = new net.minecraft.client.gui.DrawContext(client, immediate);
-        context.getMatrices().push();
-        context.getMatrices().multiplyPositionMatrix(matrices.peek().getPositionMatrix());
-        context.drawGuiTexture(RenderLayer::getGuiTextured, sprite, x, y, size, size);
-        context.getMatrices().pop();
-        if (flushImmediate) {
-            immediate.draw();
-        }
+        Sprite guiSprite = client.getGuiAtlasManager().getSprite(sprite);
+        RenderLayer layer = RenderLayer.getEntityTranslucent(guiSprite.getAtlasId());
+        VertexConsumer consumer = guiSprite.getTextureSpecificVertexConsumer(vertexConsumers.getBuffer(layer));
+
+        float x0 = x;
+        float x1 = x + size;
+        float y0 = y;
+        float y1 = y + size;
+        float minU = guiSprite.getMinU();
+        float maxU = guiSprite.getMaxU();
+        float minV = guiSprite.getMinV();
+        float maxV = guiSprite.getMaxV();
+        MatrixStack.Entry entry = matrices.peek();
+
+        consumer.vertex(entry, x0, y1, 0.0f)
+                .color(255, 255, 255, 255)
+                .texture(minU, maxV)
+                .overlay(OverlayTexture.DEFAULT_UV)
+                .light(light)
+                .normal(entry, 0.0f, 0.0f, 1.0f);
+        consumer.vertex(entry, x1, y1, 0.0f)
+                .color(255, 255, 255, 255)
+                .texture(maxU, maxV)
+                .overlay(OverlayTexture.DEFAULT_UV)
+                .light(light)
+                .normal(entry, 0.0f, 0.0f, 1.0f);
+        consumer.vertex(entry, x1, y0, 0.0f)
+                .color(255, 255, 255, 255)
+                .texture(maxU, minV)
+                .overlay(OverlayTexture.DEFAULT_UV)
+                .light(light)
+                .normal(entry, 0.0f, 0.0f, 1.0f);
+        consumer.vertex(entry, x0, y0, 0.0f)
+                .color(255, 255, 255, 255)
+                .texture(minU, minV)
+                .overlay(OverlayTexture.DEFAULT_UV)
+                .light(light)
+                .normal(entry, 0.0f, 0.0f, 1.0f);
     }
 
     private void drawInlineText(TextRenderer tr,

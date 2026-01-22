@@ -19,7 +19,7 @@ public class ClientPlayerInteractionManagerMixin {
     private void lth_onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
         if (target instanceof AbstractClientPlayerEntity) {
             boolean isCrit = CriticalHitRules.isCritical(
-                    player.fallDistance,
+                    (float) player.fallDistance,
                     player.isOnGround(),
                     player.isClimbing(),
                     player.isTouchingWater(),
